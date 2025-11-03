@@ -19,7 +19,7 @@ DATASET_PATH_DB1 = 'ninapro_db1_data'
 DATASET_PATH_DB3 = 'ninapro_db3_data'
 WINDOW_SIZE, NUM_CHANNELS = 200, 12
 INPUT_SHAPE = (WINDOW_SIZE, NUM_CHANNELS)
-EPOCHS, BATCH_SIZE = 50, 32
+EPOCHS, BATCH_SIZE = 500, 256
 APPROX_STEPS_PER_EPOCH = 5000
 
 
@@ -93,8 +93,9 @@ def data_generator(base_path, subjects, target_channels, is_sano_domain):
                     window_emg = np.concatenate([window_emg, padding], axis=1)
 
                 min_val, max_val = np.min(window_emg), np.max(window_emg)
-                window_normalized = 2 * (window_emg - min_val) / (max_val - min_val + 1e-8) - 1
-
+                # window_normalized = 2 * (window_emg - min_val) / (max_val - min_val + 1e-8) - 1
+                mean, std = np.mean(window_emg, axis=0), np.std(window_emg, axis=0)
+                window_normalized = (window_emg - mean) / (std + 1e-8)
                 yield window_normalized
 
 
@@ -197,10 +198,13 @@ if __name__ == "__main__":
             disc_fake_amputado = d_B(fake_amputado, training=True)
             gen_AB_loss = generator_loss(disc_fake_amputado)
             gen_BA_loss = generator_loss(disc_fake_sano)
-            total_cycle_loss = (cycle_loss(real_sano, cycled_sano) * 10.0) + (
-                        cycle_loss(real_amputado, cycled_amputado) * 10.0)
-            total_identity_loss = (identity_loss(real_sano, same_sano) * 5.0) + (
-                        identity_loss(real_amputado, same_amputado) * 5.0)
+            total_cycle_loss = (cycle_loss(real_sano, cycled_sano) * 5.0) + (
+                        cycle_loss(real_amputado, cycled_amputado) * 5.0)
+            lambda_identity = 5.0
+            total_identity_loss = (identity_loss(real_sano, same_sano) * lambda_identity) + (
+                        identity_loss(real_amputado, same_amputado) * lambda_identity)
+            #total_identity_loss = (identity_loss(real_sano, same_sano) * 5.0) + (
+           #           identity_loss(real_amputado, same_amputado) * 5.0)
             total_gen_AB_loss = gen_AB_loss + total_cycle_loss + total_identity_loss
             total_gen_BA_loss = gen_BA_loss + total_cycle_loss + total_identity_loss
             disc_A_loss = discriminator_loss(disc_real_sano, disc_fake_sano)
@@ -250,4 +254,3 @@ if __name__ == "__main__":
     plt.plot(reconstructed_sano[0, :, 0])
     plt.show()
 
-    
